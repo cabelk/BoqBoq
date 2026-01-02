@@ -197,7 +197,7 @@ this.attackFlash = null;
       this.load.image("player", "flash2.png");
 
       // Enemy sprite
-      this.load.image("enemy_fly", "dancing_chicken.gif");
+      this.load.image("enemy_fly", "fly.png");
 
       // Lily pads
       this.load.image("lily1", "lily1.png");

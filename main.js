@@ -20,9 +20,8 @@
   const INITIAL_PLAYER_KEY = "flash_flash2";
 
   const FLASH_IMAGES = [
-    "flash1.png",
-    "flash2.png",
-    "flash3.png"
+    "dancing_chicken.gif",
+    "live_chicken.png"
   ];
 
   const WORLD_W = GRID_W * TILE;

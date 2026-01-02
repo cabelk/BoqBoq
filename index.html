@@ -4,34 +4,27 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
   <title>NinjaFrog Prototype</title>
-  <link rel="stylesheet" href="style.css?v=1" />
+  <link rel="stylesheet" href="style.css?v=1767207796" />
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
 </head>
 <body>
-  <div id="gameOver">
-    <div id="gameOverText"></div>
-    <button id="restartOverlay" class="btn">Restart</button>
-  </div>
-
+  <div id="gameOver"><div id="gameOverText"></div><button id="restartOverlay" class="btn">Restart</button></div>
   <script>
-    (function () {
-      function showErr(msg) {
-        var el = document.getElementById('status');
-        if (el) el.textContent = 'ERROR: ' + msg;
+    (function(){
+      function showErr(msg){
+        var el=document.getElementById('status');
+        if(el) el.textContent = 'ERROR: ' + msg;
       }
-      window.addEventListener('error', function (e) { showErr(e.message || e.error || 'unknown'); });
-      window.addEventListener('unhandledrejection', function (e) {
-        showErr((e.reason && e.reason.message) ? e.reason.message : String(e.reason));
-      });
+      window.addEventListener('error', function(e){ showErr(e.message || e.error || 'unknown'); });
+      window.addEventListener('unhandledrejection', function(e){ showErr((e.reason && e.reason.message) ? e.reason.message : String(e.reason)); });
     })();
   </script>
-
   <div id="app">
     <div id="game"></div>
 
     <div id="hud">
       <div id="topBar">
-        <div id="highScore"></div>
+    <div id="highScore"></div>
         <div id="status">Loading…</div>
         <button id="restart" class="btn small">Restart</button>
       </div>
@@ -66,6 +59,6 @@
     </div>
   </div>
 
-  <script src="main.js?v=1"></script>
+  <script src="main.js?v=1767207796"></script>
 </body>
 </html>

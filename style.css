@@ -1,8 +1,8 @@
 :root{
   /* Thumb-biased: cardinals larger, diagonals smaller */
-  --btnSize: 48px;
-  --gap: 6px;
-  --padInset: 8px;
+  --btnSize: 48px;       /* base cell size */
+  --gap: 6px;            /* tighter grid gap */
+  --padInset: 8px;       /* pad interior padding */
   --padBg: rgba(0,0,0,0.22);
   --btnBg: rgba(255,255,255,0.12);
   --btnBgDown: rgba(255,255,255,0.24);
@@ -10,8 +10,8 @@
   --padRadius: 16px;
 
   /* Thumb ergonomics */
-  --diagScale: 0.82;
-  --cardScale: 1.10;
+  --diagScale: 0.82;     /* diagonals are harder to hit precisely */
+  --cardScale: 1.10;     /* cardinals are the primary inputs */
 }
 
 html, body {
@@ -52,8 +52,10 @@ html, body {
   max-width: 72vw;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
   white-space: pre-line;
 }
+
 
 .btn {
   border: 1px solid rgba(255,255,255,0.18);
@@ -69,6 +71,8 @@ html, body {
   user-select: none;
   -webkit-user-select: none;
   pointer-events: auto;
+
+  /* Better thumb feel */
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -84,6 +88,8 @@ html, body {
 /* Control pads */
 .pad3{
   position: absolute;
+
+  /* Safe-area aware (phones with gesture bars/notches) */
   bottom: calc(10px + env(safe-area-inset-bottom));
   width: calc(var(--btnSize)*3 + var(--gap)*2 + (var(--padInset)*2));
   height: calc(var(--btnSize)*3 + var(--gap)*2 + (var(--padInset)*2));
@@ -100,6 +106,7 @@ html, body {
   pointer-events: auto;
 }
 
+/* Thumb-biased placement */
 #movePad  { left:  calc(10px + env(safe-area-inset-left)); }
 #attackPad{ right: calc(10px + env(safe-area-inset-right)); }
 
@@ -107,11 +114,12 @@ html, body {
   width: var(--btnSize);
   height: var(--btnSize);
   border-radius: 14px;
+
   transform-origin: 50% 50%;
   transition: transform 70ms ease-out, background 70ms ease-out;
 }
 
-/* Larger cardinal directions */
+/* Larger cardinal directions (easier thumb flicks) */
 #movePad  [data-move="0,-1"],
 #movePad  [data-move="0,1"],
 #movePad  [data-move="-1,0"],
@@ -123,7 +131,7 @@ html, body {
   transform: scale(var(--cardScale));
 }
 
-/* Smaller diagonals */
+/* Smaller diagonals (reduce accidental diagonal hits) */
 #movePad  [data-move="-1,-1"],
 #movePad  [data-move="1,-1"],
 #movePad  [data-move="-1,1"],
@@ -150,7 +158,7 @@ html, body {
   opacity: 0.75;
 }
 
-/* Landscape */
+/* Landscape: tighten */
 @media (orientation: landscape){
   :root{
     --btnSize: 44px;
@@ -159,7 +167,9 @@ html, body {
     --diagScale: 0.80;
     --cardScale: 1.08;
   }
+
   #status{ max-width: 58vw; }
+
   #movePad  { left:  calc(8px + env(safe-area-inset-left)); }
   #attackPad{ right: calc(8px + env(safe-area-inset-right)); }
   .pad3{ bottom: calc(8px + env(safe-area-inset-bottom)); }
@@ -179,7 +189,8 @@ html, body {
 /* Ensure on-screen controls receive taps; canvas should not intercept pointer events */
 #game canvas { pointer-events: none; }
 
-/* Mobile viewport safety */
+
+/* --- Mobile viewport safety --- */
 #app {
   height: 100vh;
   height: 100dvh;
@@ -190,13 +201,14 @@ html, body {
   bottom: max(16px, calc(16px + env(safe-area-inset-bottom)));
 }
 
-/* Background */
+
+/* --- Pond water background (requires /images/water.png) --- */
 #app {
-  background-image: url("./images/water.png");
+  background-image: url("images/grass.jpg");
   background-repeat: repeat;
-  background-size: 512px 512px;
+  background-size: cover;
   background-position: 0 0;
-  animation: waterPan 18s linear infinite;
+  animation: waterPan 18000s linear infinite;
 }
 
 @keyframes waterPan {
@@ -204,8 +216,9 @@ html, body {
   100% { background-position: 260px 180px; }
 }
 
-/* Ensure Phaser canvas is transparent so the background shows through */
+/* Ensure Phaser canvas is transparent so the water shows through */
 #game canvas { background: transparent !important; }
+
 
 #highScore{
   position:absolute;
@@ -239,6 +252,7 @@ html, body {
 
 #restartOverlay{
   pointer-events: auto;
+
   margin-top: 14px;
   padding: 14px 18px;
   font-size: 18px;
@@ -246,5 +260,9 @@ html, body {
   min-width: 160px;
   justify-content: center;
 }
+
+#restartOverlay{
+  pointer-events: auto;
+ pointer-events: auto; }
 
 #restart{ display:none !important; }

@@ -327,7 +327,8 @@ this.scale.resize(window.innerWidth, window.innerHeight);
 
       this.fitWorldToScreen(window.innerWidth, window.innerHeight);
       this.buildDecor();
-// Grid disabled
+
+      // Grid disabled
       this.playerCell = { x: Math.floor(GRID_W / 2), y: Math.floor(GRID_H / 2) };
 
       // Player logical object (container) with a child sprite.
@@ -366,6 +367,12 @@ this.kills = 0;
       this.hideGameOverOverlay();
 this.dead = false;
       setStatus(this.statusLine());
+      this.input.once("pointerdown", () => {
+        if (this.sound.context && this.sound.context.state === "suspended") {
+          this.sound.context.resume();
+        }
+      });
+
 
       this.time.addEvent({
         delay: ENEMY_SPAWN_MS,
@@ -391,6 +398,9 @@ this.dead = false;
     cellToWorldY(cy) { return cy * TILE + TILE / 2; }
 
     jumpPlayerTo(nx, ny) {
+      if (this._lastWalkSfxAt && performance.now() - this._lastWalkSfxAt < 80) return;
+      this._lastWalkSfxAt = performance.now();
+
       const startX = this.player.x;
       const startY = this.player.y;
       const endX = this.cellToWorldX(nx);

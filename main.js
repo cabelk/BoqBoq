@@ -139,10 +139,14 @@ if (movePad) {
   // Move pad: slide enabled with small delay between moves (easier control)
   bindSlidePad(movePad, inputState.moveQueue, { cooldownMs: MOVE_COOLDOWN_MS });
 }
-if (attackPad) {
-  // Attack pad: slide enabled (no delay; keep responsive)
-  bindSlidePad(attackPad, inputState.attackQueue);
+const attackBtn = document.getElementById("attackBtn");
+if (attackBtn) {
+  attackBtn.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    inputState.attackQueue.push({ dx: 0, dy: 0 }); // direction ignored anyway
+  }, { passive: false });
 }
+
 
 
   document.getElementById("restart").addEventListener("pointerdown", (e) => {

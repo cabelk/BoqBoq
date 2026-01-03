@@ -226,6 +226,7 @@ const statusEl = document.getElementById("status");
       const loadSfx = (key) => {
         this.load.audio(key, [
           `audio/${key}.mp3`,
+          `audio/${key}.wav`,
           `audio/${key}.ogg`
         ]);
       };

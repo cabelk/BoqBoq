@@ -30,6 +30,20 @@
 
   const inputState = { moveQueue: [], attackQueue: [] };
 
+    // ===== Audio (SFX) =====
+  const WALK_SFX = ["boq_walk1", "boq_walk2", "boq_walk3"];
+  const ATTACK_SFX = ["boq_attack1", "boq_attack2", "boq_attack3"];
+  const GOT_SFX = ["boq_got1", "boq_got2", "boq_got3", "boq_got4", "boq_got5"];
+
+  const SFX_VOL_WALK = 0.35;
+  const SFX_VOL_ATTACK = 0.45;
+  const SFX_VOL_GOT = 0.55;
+
+  function pickRandom(arr) {
+    return arr[Math.floor(Math.random() * arr.length)];
+  }
+
+
 
 // ===== Slide / Gesture Controls (thumb-drag) =====
 function directionFromDelta(dx, dy, deadZone = 12) {
@@ -187,7 +201,7 @@ const statusEl = document.getElementById("status");
 
       
       this.hideGameOverOverlay();
-this.attackFlash = null;
+      this.attackFlash = null;
 
       this.killTimes = [];
       this.centerFlash = null;
@@ -207,6 +221,17 @@ this.attackFlash = null;
       this.load.image("lily1", "lily1.png");
       this.load.image("lily2", "lily2.png");
       this.load.image("lily3", "lily3.png");
+
+      // --- SFX (chicken "bock" sounds) ---
+      const loadSfx = (key) => {
+        this.load.audio(key, [
+          `audio/${key}.mp3`,
+          `audio/${key}.ogg`
+        ]);
+      };
+
+      [...WALK_SFX, ...ATTACK_SFX, ...GOT_SFX].forEach(loadSfx);
+
 
       // Surface asset load failures (common issue on GitHub Pages due to path/case)
       this.load.on('loaderror', function (file) {
@@ -373,6 +398,7 @@ this.dead = false;
       const duration = 140; // ms, snappy but readable
       // prevent input during jump
       this.isPlayerMoving = true;
+      this.playRandomSfx(WALK_SFX, { volume: SFX_VOL_WALK });
       this.tweens.add({
         targets: this.player,
         x: endX,
@@ -711,6 +737,24 @@ animateEnemyDeath(enemy) {
       scene.triggerInhale();
     }
 
+playRandomSfx(keys, opts = {}) {
+  if (!keys || !keys.length) return;
+  if (!this.sound) return;
+
+  const key = pickRandom(keys);
+  if (!this.cache.audio.exists(key)) return;
+
+  const vol = Number.isFinite(opts.volume) ? opts.volume : 0.5;
+
+  // Use play(key, config) to avoid creating a ton of Sound instances.
+  try {
+    this.sound.play(key, { volume: vol });
+  } catch (_) {
+    // Ignore if audio is blocked until user gesture; it will work after first interaction.
+  }
+}
+
+    
 playAttackFlash(dx, dy) {
       const x0 = this.cellToWorldX(this.playerCell.x);
       const y0 = this.cellToWorldY(this.playerCell.y);
@@ -833,6 +877,7 @@ flashRandomImage() {
       const enemy = this.enemies.get(k);
       if (enemy) {
         this.enemies.delete(k);
+        this.playRandomSfx(GOT_SFX, { volume: SFX_VOL_GOT });
         this.animateEnemyDeath(enemy);
         this.kills += 1;
         this.recordKillAndMaybeFlash();
@@ -845,7 +890,7 @@ flashRandomImage() {
     startCascadeAttack() {
       if (this.dead) return;
       if (this.isCascadingAttack) return; // prevent overlap
-      
+      this.playRandomSfx(ATTACK_SFX, { volume: SFX_VOL_ATTACK });
       this.isCascadingAttack = true;
       
       // Clockwise ring of 8 directions (starting at NW)

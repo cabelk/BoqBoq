@@ -215,7 +215,7 @@ const statusEl = document.getElementById("status");
       // --- SFX (chicken "bock" sounds) ---
       const loadSfx = (key) => {
         this.load.audio(key, [
-          `audio/${key}.wav`
+          `audio/${key}.m4a`
         ]);
       };
 

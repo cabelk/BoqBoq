@@ -369,7 +369,7 @@ this.dead = false;
           const kps = (this.kills / Math.max(0.001, (performance.now() - this.startTime) / 1000)).toFixed(2);
 
 
-          const line1 = `Points: ${this.kills}`;
+          const line1 = `BoqBoqs!: ${this.kills}`;
 
 
           const line2 = `Time: ${t}s`;
@@ -434,7 +434,7 @@ this.dead = false;
           wrap.style.display = "block";
 
 
-          textEl.textContent = `Game Over\nPoints: ${kills}\n${badge}`;
+          textEl.textContent = `Game Over\nBoqBoqs!: ${kills}\n${badge}`;
 
 
           const overlayRestart = document.getElementById("restartOverlay");

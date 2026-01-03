@@ -768,6 +768,73 @@ flashRandomImage() {
       }
     }
 
+    attackOnce(dx, dy) {
+      if (this.dead) return;
+      if (!isAdjacent(dx, dy)) return;
+      this.playAttackFlash(dx, dy);
+      const tx = this.playerCell.x + dx;
+      const ty = this.playerCell.y + dy;
+      if (tx < 0 || tx >= GRID_W || ty < 0 || ty >= GRID_H) {
+        // For cascade, don't spam status for edge hits—optional:
+        // setStatus(this.statusLine("edge"));
+        return;
+      }
+      const k = cellKey(tx, ty);
+      const enemy = this.enemies.get(k);
+      if (enemy) {
+        this.enemies.delete(k);
+        this.animateEnemyDeath(enemy);
+        this.kills += 1;
+        this.recordKillAndMaybeFlash();
+        // setStatus(this.statusLine("HIT"));
+      } else {
+        // setStatus(this.statusLine("miss"));
+      }
+    }
+
+    startCascadeAttack() {
+      if (this.dead) return;
+      if (this.isCascadingAttack) return; // prevent overlap
+      
+      this.isCascadingAttack = true;
+      
+      // Clockwise ring of 8 directions (starting at NW)
+      const dirsCW = [
+        { dx: -1, dy: -1 }, // NW
+        { dx:  0, dy: -1 }, // N
+        { dx:  1, dy: -1 }, // NE
+        { dx:  1, dy:  0 }, // E
+        { dx:  1, dy:  1 }, // SE
+        { dx:  0, dy:  1 }, // S
+        { dx: -1, dy:  1 }, // SW
+        { dx: -1, dy:  0 }, // W
+        ];
+      const clockwise = Math.random() < 0.5;
+      const startIdx = Math.floor(Math.random() * dirsCW.length);
+      // Build ordered sequence of 8 directions
+      const seq = [];
+      for (let i = 0; i < 8; i++) {
+        const step = clockwise ? i : -i;
+        const idx = (startIdx + step + 8) % 8;
+        seq.push(dirsCW[idx]);
+      }
+      
+      const stepDelayMs = 16; // tight “spin” feel; tune 25–60ms
+      
+      // Schedule 8 quick attacks; use scene clock for consistent timing
+      seq.forEach((dir, i) => {
+        this.time.delayedCall(stepDelayMs * i, () => {
+          this.attackOnce(dir.dx, dir.dy);
+          
+          // Release lock after last step
+          if (i === seq.length - 1) {
+            this.isCascadingAttack = false;
+          }
+        });
+      });
+    }
+
+    
     tryAttack(dx, dy) {
       if (this.dead) return;
       if (!isAdjacent(dx, dy)) return;
@@ -800,8 +867,8 @@ flashRandomImage() {
         this.tryMove(dx, dy);
       }
       if (!this.dead && inputState.attackQueue.length) {
-        const { dx, dy } = inputState.attackQueue.shift();
-        this.tryAttack(dx, dy);
+        inputState.attackQueue.shift(); // consume one press/gesture event (direction ignored)
+        this.startCascadeAttack();
       }
     }
   }

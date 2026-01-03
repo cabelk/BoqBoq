@@ -409,7 +409,7 @@ this.dead = false;
           const line3 = extra ? `${extra}` : "";
 
 
-          return `${line1}\n${line2}\n${line3}`;
+          return `${line1}\n${line3}`;
 
 
         }

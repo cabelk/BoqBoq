@@ -225,9 +225,7 @@ const statusEl = document.getElementById("status");
       // --- SFX (chicken "bock" sounds) ---
       const loadSfx = (key) => {
         this.load.audio(key, [
-          `audio/${key}.mp3`,
-          `audio/${key}.wav`,
-          `audio/${key}.ogg`
+          `audio/${key}.wav`
         ]);
       };
 
@@ -368,9 +366,8 @@ this.kills = 0;
 this.dead = false;
       setStatus(this.statusLine());
       this.input.once("pointerdown", () => {
-        if (this.sound.context && this.sound.context.state === "suspended") {
-          this.sound.context.resume();
-        }
+        const ctx = this.sound && this.sound.context;
+        if (ctx && ctx.state === "suspended") ctx.resume();
       });
 
 
@@ -398,8 +395,13 @@ this.dead = false;
     cellToWorldY(cy) { return cy * TILE + TILE / 2; }
 
     jumpPlayerTo(nx, ny) {
-      if (this._lastWalkSfxAt && performance.now() - this._lastWalkSfxAt < 80) return;
-      this._lastWalkSfxAt = performance.now();
+      const now = performance.now();
+      const canPlayWalk = !this._lastWalkSfxAt || (now - this._lastWalkSfxAt) >= 80;
+      if (canPlayWalk) {
+        this._lastWalkSfxAt = now;
+        this.playRandomSfx(WALK_SFX, { volume: SFX_VOL_WALK });
+      }
+
 
       const startX = this.player.x;
       const startY = this.player.y;
@@ -409,7 +411,6 @@ this.dead = false;
       const duration = 140; // ms, snappy but readable
       // prevent input during jump
       this.isPlayerMoving = true;
-      this.playRandomSfx(WALK_SFX, { volume: SFX_VOL_WALK });
       this.tweens.add({
         targets: this.player,
         x: endX,

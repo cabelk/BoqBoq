@@ -391,6 +391,52 @@ this.dead = false;
       });
     }
 
+    spawnFloatingScoreText(text) {
+      if (!this.player) return;
+      const x = this.player.x;
+      const y = this.player.y;
+      const t = this.add.text(x, y, String(text), {
+        fontFamily: '"Comic Sans MS", "Trebuchet MS", system-ui, sans-serif',
+        fontSize: "30px",
+        fontStyle: "900",
+        color: "#f7f2a0",      // light fill
+        stroke: "#0b0f14",     // dark outline
+        strokeThickness: 7,
+        shadow: {
+          offsetX: 0,
+          offsetY: 2,
+          color: "#000000",
+          blur: 6,
+          fill: true
+        }
+      });
+      t.setOrigin(0.5, 0.5);
+      t.setDepth(99999);
+      t.setScrollFactor(1);
+      
+      // Pop + rise + fade
+      t.setScale(0.6);
+      t.setAlpha(0.0);
+      this.tweens.add({
+        targets: t,
+        alpha: 1,
+        scale: 1.2,
+        duration: 120,
+        ease: "Back.out"
+      });
+      this.tweens.add({
+        targets: t,
+        y: y - 56,
+        alpha: 0,
+        scale: 1.45,
+        duration: 560,
+        ease: "Quad.in",
+        delay: 60,
+        onComplete: () => t.destroy()
+      });
+    }
+
+
     
 
 
@@ -765,8 +811,11 @@ flashRandomImage() {
 
       if (this.killTimes.length >= FLASH_KILLS_REQUIRED) {
         this.killTimes = [];
+        // Show the player's current score (kills/points) when the "grow" triggers
+        this.spawnFloatingScoreText(String(this.kills));
         this.flashRandomImage();
       }
+
     }
 
     attackOnce(dx, dy) {

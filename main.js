@@ -360,6 +360,36 @@ this.dead = false;
     cellToWorldX(cx) { return cx * TILE + TILE / 2; }
     cellToWorldY(cy) { return cy * TILE + TILE / 2; }
 
+    jumpPlayerTo(nx, ny) {
+      const startX = this.player.x;
+      const startY = this.player.y;
+      const endX = this.cellToWorldX(nx);
+      const endY = this.cellToWorldY(ny);
+      const jumpHeight = 18; // visual arc height
+      const duration = 140; // ms, snappy but readable
+      // prevent input during jump
+      this.isPlayerMoving = true;
+      this.tweens.add({
+        targets: this.player,
+        x: endX,
+        y: endY,
+        duration,
+        ease: 'Linear',
+        onUpdate: tween => {
+            const t = tween.progress;
+            const arc = Math.sin(Math.PI * t) * jumpHeight;
+            this.player.y = Phaser.Math.Linear(startY, endY, t) - arc;
+        },
+        onComplete: () => {
+            this.player.setPosition(endX, endY);
+            this.isPlayerMoving = false;
+        }
+      });
+    }
+
+    
+
+
     statusLine(extra = "") {
 
 
@@ -542,6 +572,7 @@ this.dead = false;
     }
 
     tryMove(dx, dy) {
+      if (this.isPlayerMoving) return;
       if (this.dead) return;
       if (!isAdjacent(dx, dy)) return;
 
@@ -552,13 +583,13 @@ this.dead = false;
       const k = cellKey(nx, ny);
       if (this.enemies.has(k)) {
         this.playerCell = { x: nx, y: ny };
-        this.player.setPosition(this.cellToWorldX(nx), this.cellToWorldY(ny));
+        this.jumpPlayerTo(nx, ny);
         this.die("stepped onto enemy");
         return;
       }
 
       this.playerCell = { x: nx, y: ny };
-      this.player.setPosition(this.cellToWorldX(nx), this.cellToWorldY(ny));
+      this.jumpPlayerTo(nx, ny);
       setStatus(this.statusLine());
     }
 

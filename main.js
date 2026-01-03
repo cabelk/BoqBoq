@@ -406,9 +406,6 @@ this.dead = false;
           const line1 = `BoqBoqs!: ${this.kills}`;
 
 
-          const line2 = `Time: ${t}s`;
-
-
           const line3 = extra ? `${extra}` : "";
 
 
@@ -566,7 +563,7 @@ this.dead = false;
       if (isNewHigh) this.saveHighScore(this.kills, kps);
 
       // Status panel
-      setStatus(this.statusLine(`DEAD: ${reason}. Tap Restart.`));
+      setStatus(this.statusLine(`BOQ!: ${reason}. Tap Restart.`));
 
       // Center overlay
       this.showGameOverOverlay(this.kills, kps, isNewHigh);

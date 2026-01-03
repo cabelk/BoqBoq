@@ -210,6 +210,17 @@ const statusEl = document.getElementById("status");
     }
 
     preload() {
+      this.load.setPath(""); // root-relative paths now
+
+      // --- SFX (chicken "bock" sounds) ---
+      const loadSfx = (key) => {
+        this.load.audio(key, [
+          `audio/${key}.wav`
+        ]);
+      };
+
+      [...WALK_SFX, ...ATTACK_SFX, ...GOT_SFX].forEach(loadSfx);
+
       this.load.setPath("images");
       // Player sprite (must exist at images/flash2.png)
       this.load.image("player", "flash2.png");
@@ -222,14 +233,6 @@ const statusEl = document.getElementById("status");
       this.load.image("lily2", "lily2.png");
       this.load.image("lily3", "lily3.png");
 
-      // --- SFX (chicken "bock" sounds) ---
-      const loadSfx = (key) => {
-        this.load.audio(key, [
-          `audio/${key}.wav`
-        ]);
-      };
-
-      [...WALK_SFX, ...ATTACK_SFX, ...GOT_SFX].forEach(loadSfx);
 
 
       // Surface asset load failures (common issue on GitHub Pages due to path/case)

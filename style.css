@@ -110,6 +110,29 @@ html, body {
 #movePad  { left:  calc(10px + env(safe-area-inset-left)); }
 #attackPad{ right: calc(10px + env(safe-area-inset-right)); }
 
+/* Single attack button */
+#attackPad.atkOne{
+  position: absolute;
+  right: calc(10px + env(safe-area-inset-right));
+  bottom: max(16px, calc(16px + env(safe-area-inset-bottom)));
+  width: calc(var(--btnSize)*3 + var(--gap)*2 + (var(--padInset)*2));
+  height: calc(var(--btnSize)*3 + var(--gap)*2 + (var(--padInset)*2));
+  padding: var(--padInset);
+  background: var(--padBg);
+  border-radius: var(--padRadius);
+  display: grid;
+  place-items: center;
+}
+
+.atkBig{
+  width: calc(var(--btnSize)*3 + var(--gap)*2);
+  height: calc(var(--btnSize)*3 + var(--gap)*2);
+  border-radius: 18px;
+  font-size: 20px;
+  letter-spacing: 0.12em;
+}
+
+
 .padbtn{
   width: var(--btnSize);
   height: var(--btnSize);

@@ -26,9 +26,9 @@ html, body {
 }
 
 #app { position: relative; height: 100vh; width: 100vw; overflow: hidden; }
-#game { position:absolute; inset:0; }
+#game { position:absolute; inset:0; z-index: 0; }
+#hud  { position: absolute; inset: 0; pointer-events: auto; z-index: 10; }
 
-#hud { position: absolute; inset: 0; pointer-events: auto; }
 
 #topBar {
   position: absolute;
@@ -109,6 +109,24 @@ html, body {
 /* Thumb-biased placement */
 #movePad  { left:  calc(10px + env(safe-area-inset-left)); }
 #attackPad{ right: calc(10px + env(safe-area-inset-right)); }
+
+/* Single attack button */
+#attackPad.atkOne{
+  display: grid;
+  place-items: center;
+  grid-template-columns: none;
+  grid-template-rows: none;
+}
+
+
+.atkBig{
+  width: calc(var(--btnSize)*3 + var(--gap)*2);
+  height: calc(var(--btnSize)*3 + var(--gap)*2);
+  border-radius: 18px;
+  font-size: 20px;
+  letter-spacing: 0.12em;
+}
+
 
 .padbtn{
   width: var(--btnSize);

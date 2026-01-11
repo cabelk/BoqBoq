@@ -30,6 +30,20 @@
 
   const inputState = { moveQueue: [], attackQueue: [] };
 
+    // ===== Audio (SFX) =====
+  const WALK_SFX = ["boq_walk1", "boq_walk2", "boq_walk3"];
+  const ATTACK_SFX = ["boq_attack1", "boq_attack2", "boq_attack3"];
+  const GOT_SFX = ["boq_got1", "boq_got2", "boq_got3", "boq_got4", "boq_got5"];
+
+  const SFX_VOL_WALK = 0.35;
+  const SFX_VOL_ATTACK = 0.45;
+  const SFX_VOL_GOT = 0.55;
+
+  function pickRandom(arr) {
+    return arr[Math.floor(Math.random() * arr.length)];
+  }
+
+
 
 // ===== Slide / Gesture Controls (thumb-drag) =====
 function directionFromDelta(dx, dy, deadZone = 12) {
@@ -139,10 +153,14 @@ if (movePad) {
   // Move pad: slide enabled with small delay between moves (easier control)
   bindSlidePad(movePad, inputState.moveQueue, { cooldownMs: MOVE_COOLDOWN_MS });
 }
-if (attackPad) {
-  // Attack pad: slide enabled (no delay; keep responsive)
-  bindSlidePad(attackPad, inputState.attackQueue);
+const attackBtn = document.getElementById("attackBtn");
+if (attackBtn) {
+  attackBtn.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    inputState.attackQueue.push({ dx: 0, dy: 0 }); // direction ignored anyway
+  }, { passive: false });
 }
+
 
 
   document.getElementById("restart").addEventListener("pointerdown", (e) => {
@@ -183,7 +201,7 @@ const statusEl = document.getElementById("status");
 
       
       this.hideGameOverOverlay();
-this.attackFlash = null;
+      this.attackFlash = null;
 
       this.killTimes = [];
       this.centerFlash = null;
@@ -192,6 +210,17 @@ this.attackFlash = null;
     }
 
     preload() {
+      this.load.setPath(""); // root-relative paths now
+
+      // --- SFX (chicken "bock" sounds) ---
+      const loadSfx = (key) => {
+        this.load.audio(key, [
+          `audio/${key}.m4a`
+        ]);
+      };
+
+      [...WALK_SFX, ...ATTACK_SFX, ...GOT_SFX].forEach(loadSfx);
+
       this.load.setPath("images");
       // Player sprite (must exist at images/flash2.png)
       this.load.image("player", "flash2.png");
@@ -203,6 +232,8 @@ this.attackFlash = null;
       this.load.image("lily1", "lily1.png");
       this.load.image("lily2", "lily2.png");
       this.load.image("lily3", "lily3.png");
+
+
 
       // Surface asset load failures (common issue on GitHub Pages due to path/case)
       this.load.on('loaderror', function (file) {
@@ -297,7 +328,8 @@ this.scale.resize(window.innerWidth, window.innerHeight);
 
       this.fitWorldToScreen(window.innerWidth, window.innerHeight);
       this.buildDecor();
-// Grid disabled
+
+      // Grid disabled
       this.playerCell = { x: Math.floor(GRID_W / 2), y: Math.floor(GRID_H / 2) };
 
       // Player logical object (container) with a child sprite.
@@ -336,6 +368,11 @@ this.kills = 0;
       this.hideGameOverOverlay();
 this.dead = false;
       setStatus(this.statusLine());
+      this.input.once("pointerdown", () => {
+        const ctx = this.sound && this.sound.context;
+        if (ctx && ctx.state === "suspended") ctx.resume();
+      });
+
 
       this.time.addEvent({
         delay: ENEMY_SPAWN_MS,
@@ -360,6 +397,90 @@ this.dead = false;
     cellToWorldX(cx) { return cx * TILE + TILE / 2; }
     cellToWorldY(cy) { return cy * TILE + TILE / 2; }
 
+    jumpPlayerTo(nx, ny) {
+      const now = performance.now();
+      const canPlayWalk = !this._lastWalkSfxAt || (now - this._lastWalkSfxAt) >= 80;
+      if (canPlayWalk) {
+        this._lastWalkSfxAt = now;
+        this.playRandomSfx(WALK_SFX, { volume: SFX_VOL_WALK });
+      }
+
+
+      const startX = this.player.x;
+      const startY = this.player.y;
+      const endX = this.cellToWorldX(nx);
+      const endY = this.cellToWorldY(ny);
+      const jumpHeight = 18; // visual arc height
+      const duration = 140; // ms, snappy but readable
+      // prevent input during jump
+      this.isPlayerMoving = true;
+      this.tweens.add({
+        targets: this.player,
+        x: endX,
+        y: endY,
+        duration,
+        ease: 'Linear',
+        onUpdate: tween => {
+            const t = tween.progress;
+            const arc = Math.sin(Math.PI * t) * jumpHeight;
+            this.player.y = Phaser.Math.Linear(startY, endY, t) - arc;
+        },
+        onComplete: () => {
+            this.player.setPosition(endX, endY);
+            this.isPlayerMoving = false;
+        }
+      });
+    }
+
+    spawnFloatingScoreText(text) {
+      if (!this.player) return;
+      const x = this.player.x;
+      const y = this.player.y;
+      const t = this.add.text(x, y, String(text), {
+        fontFamily: '"Comic Sans MS", "Trebuchet MS", system-ui, sans-serif',
+        fontSize: "30px",
+        fontStyle: "900",
+        color: "#f7f2a0",      // light fill
+        stroke: "#0b0f14",     // dark outline
+        strokeThickness: 7,
+        shadow: {
+          offsetX: 0,
+          offsetY: 2,
+          color: "#000000",
+          blur: 6,
+          fill: true
+        }
+      });
+      t.setOrigin(0.5, 0.5);
+      t.setDepth(99999);
+      t.setScrollFactor(1);
+      
+      // Pop + rise + fade
+      t.setScale(0.6);
+      t.setAlpha(0.0);
+      this.tweens.add({
+        targets: t,
+        alpha: 1,
+        scale: 1.2,
+        duration: 120,
+        ease: "Back.out"
+      });
+      this.tweens.add({
+        targets: t,
+        y: y - 56,
+        alpha: 0,
+        scale: 1.45,
+        duration: 560,
+        ease: "Quad.in",
+        delay: 60,
+        onComplete: () => t.destroy()
+      });
+    }
+
+
+    
+
+
     statusLine(extra = "") {
 
 
@@ -372,13 +493,10 @@ this.dead = false;
           const line1 = `BoqBoqs!: ${this.kills}`;
 
 
-          const line2 = `Time: ${t}s`;
-
-
           const line3 = extra ? `${extra}` : "";
 
 
-          return `${line1}\n${line2}\n${line3}`;
+          return `${line1}\n${line3}`;
 
 
         }
@@ -532,7 +650,7 @@ this.dead = false;
       if (isNewHigh) this.saveHighScore(this.kills, kps);
 
       // Status panel
-      setStatus(this.statusLine(`DEAD: ${reason}. Tap Restart.`));
+      setStatus(this.statusLine(`BOQ!: ${reason}. Tap Restart.`));
 
       // Center overlay
       this.showGameOverOverlay(this.kills, kps, isNewHigh);
@@ -542,6 +660,7 @@ this.dead = false;
     }
 
     tryMove(dx, dy) {
+      if (this.isPlayerMoving) return;
       if (this.dead) return;
       if (!isAdjacent(dx, dy)) return;
 
@@ -552,13 +671,13 @@ this.dead = false;
       const k = cellKey(nx, ny);
       if (this.enemies.has(k)) {
         this.playerCell = { x: nx, y: ny };
-        this.player.setPosition(this.cellToWorldX(nx), this.cellToWorldY(ny));
+        this.jumpPlayerTo(nx, ny);
         this.die("stepped onto enemy");
         return;
       }
 
       this.playerCell = { x: nx, y: ny };
-      this.player.setPosition(this.cellToWorldX(nx), this.cellToWorldY(ny));
+      this.jumpPlayerTo(nx, ny);
       setStatus(this.statusLine());
     }
 
@@ -633,6 +752,24 @@ animateEnemyDeath(enemy) {
       scene.triggerInhale();
     }
 
+playRandomSfx(keys, opts = {}) {
+  if (!keys || !keys.length) return;
+  if (!this.sound) return;
+
+  const key = pickRandom(keys);
+  if (!this.cache.audio.exists(key)) return;
+
+  const vol = Number.isFinite(opts.volume) ? opts.volume : 0.5;
+
+  // Use play(key, config) to avoid creating a ton of Sound instances.
+  try {
+    this.sound.play(key, { volume: vol });
+  } catch (_) {
+    // Ignore if audio is blocked until user gesture; it will work after first interaction.
+  }
+}
+
+    
 playAttackFlash(dx, dy) {
       const x0 = this.cellToWorldX(this.playerCell.x);
       const y0 = this.cellToWorldY(this.playerCell.y);
@@ -733,10 +870,81 @@ flashRandomImage() {
 
       if (this.killTimes.length >= FLASH_KILLS_REQUIRED) {
         this.killTimes = [];
+        // Show the player's current score (kills/points) when the "grow" triggers
+        this.spawnFloatingScoreText(String(this.kills));
         this.flashRandomImage();
+      }
+
+    }
+
+    attackOnce(dx, dy) {
+      if (this.dead) return;
+      if (!isAdjacent(dx, dy)) return;
+      this.playAttackFlash(dx, dy);
+      const tx = this.playerCell.x + dx;
+      const ty = this.playerCell.y + dy;
+      if (tx < 0 || tx >= GRID_W || ty < 0 || ty >= GRID_H) {
+        // For cascade, don't spam status for edge hits—optional:
+        // setStatus(this.statusLine("edge"));
+        return;
+      }
+      const k = cellKey(tx, ty);
+      const enemy = this.enemies.get(k);
+      if (enemy) {
+        this.enemies.delete(k);
+        this.playRandomSfx(GOT_SFX, { volume: SFX_VOL_GOT });
+        this.animateEnemyDeath(enemy);
+        this.kills += 1;
+        this.recordKillAndMaybeFlash();
+        // setStatus(this.statusLine("HIT"));
+      } else {
+        // setStatus(this.statusLine("miss"));
       }
     }
 
+    startCascadeAttack() {
+      if (this.dead) return;
+      if (this.isCascadingAttack) return; // prevent overlap
+      this.playRandomSfx(ATTACK_SFX, { volume: SFX_VOL_ATTACK });
+      this.isCascadingAttack = true;
+      
+      // Clockwise ring of 8 directions (starting at NW)
+      const dirsCW = [
+        { dx: -1, dy: -1 }, // NW
+        { dx:  0, dy: -1 }, // N
+        { dx:  1, dy: -1 }, // NE
+        { dx:  1, dy:  0 }, // E
+        { dx:  1, dy:  1 }, // SE
+        { dx:  0, dy:  1 }, // S
+        { dx: -1, dy:  1 }, // SW
+        { dx: -1, dy:  0 }, // W
+        ];
+      const clockwise = Math.random() < 0.5;
+      const startIdx = Math.floor(Math.random() * dirsCW.length);
+      // Build ordered sequence of 8 directions
+      const seq = [];
+      for (let i = 0; i < 8; i++) {
+        const step = clockwise ? i : -i;
+        const idx = (startIdx + step + 8) % 8;
+        seq.push(dirsCW[idx]);
+      }
+      
+      const stepDelayMs = 16; // tight “spin” feel; tune 25–60ms
+      
+      // Schedule 8 quick attacks; use scene clock for consistent timing
+      seq.forEach((dir, i) => {
+        this.time.delayedCall(stepDelayMs * i, () => {
+          this.attackOnce(dir.dx, dir.dy);
+          
+          // Release lock after last step
+          if (i === seq.length - 1) {
+            this.isCascadingAttack = false;
+          }
+        });
+      });
+    }
+
+    
     tryAttack(dx, dy) {
       if (this.dead) return;
       if (!isAdjacent(dx, dy)) return;
@@ -769,8 +977,8 @@ flashRandomImage() {
         this.tryMove(dx, dy);
       }
       if (!this.dead && inputState.attackQueue.length) {
-        const { dx, dy } = inputState.attackQueue.shift();
-        this.tryAttack(dx, dy);
+        inputState.attackQueue.shift(); // consume one press/gesture event (direction ignored)
+        this.startCascadeAttack();
       }
     }
   }

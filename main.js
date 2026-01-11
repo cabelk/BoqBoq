@@ -180,6 +180,206 @@ if (attackBtn) {
 const statusEl = document.getElementById("status");
   const setStatus = (t) => statusEl.textContent = t;
 
+// --- Firebase Global Leaderboard (Firestore) ---
+// Collection name is versioned so you can change scoring later without mixing eras.
+const LEADERBOARD_COLLECTION = "leaderboard_boquboq_v1";
+const MAX_LEADERBOARD_ROWS = 25;
+
+// DOM hooks
+const leaderboardBtn = document.getElementById("leaderboardBtn");
+const leaderboardPanel = document.getElementById("leaderboardPanel");
+const leaderboardClose = document.getElementById("leaderboardClose");
+const leaderboardListEl = document.getElementById("leaderboardList");
+const leaderboardMetaEl = document.getElementById("leaderboardMeta");
+const playerNameInput = document.getElementById("playerNameInput");
+const saveNameBtn = document.getElementById("saveNameBtn");
+const shareBtn = document.getElementById("shareBtn");
+
+const safeText = (v) => (v == null ? "" : String(v));
+const getPlayerName = () => {
+  try { return localStorage.getItem("boq_playerName") || ""; } catch { return ""; }
+};
+const setPlayerName = (name) => {
+  const trimmed = safeText(name).trim().slice(0, 24);
+  try { localStorage.setItem("boq_playerName", trimmed); } catch {}
+  return trimmed;
+};
+
+if (playerNameInput) playerNameInput.value = getPlayerName();
+
+if (saveNameBtn && playerNameInput) {
+  saveNameBtn.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    const n = setPlayerName(playerNameInput.value);
+    playerNameInput.value = n;
+    if (leaderboardMetaEl) leaderboardMetaEl.textContent = n ? `Name saved as "${n}".` : "Name cleared (Anonymous).";
+  }, { passive: false });
+}
+
+const showLeaderboard = () => {
+  if (!leaderboardPanel) return;
+  leaderboardPanel.classList.remove("hidden");
+  leaderboardPanel.setAttribute("aria-hidden", "false");
+  refreshLeaderboard().catch(() => {});
+};
+const hideLeaderboard = () => {
+  if (!leaderboardPanel) return;
+  leaderboardPanel.classList.add("hidden");
+  leaderboardPanel.setAttribute("aria-hidden", "true");
+};
+
+if (leaderboardBtn) {
+  leaderboardBtn.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    if (!leaderboardPanel) return;
+    const isHidden = leaderboardPanel.classList.contains("hidden");
+    if (isHidden) showLeaderboard(); else hideLeaderboard();
+  }, { passive: false });
+}
+if (leaderboardClose) {
+  leaderboardClose.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    hideLeaderboard();
+  }, { passive: false });
+}
+
+// Firebase state
+let _fbReady = false;
+let _db = null;
+let _auth = null;
+
+const hasFirebaseConfig = () => {
+  const c = window.FIREBASE_CONFIG;
+  return c && c.apiKey && c.projectId && c.apiKey !== "PASTE_ME" && c.projectId !== "PASTE_ME";
+};
+
+const initFirebase = async () => {
+  if (_fbReady) return true;
+  if (!window.firebase) {
+    if (leaderboardMetaEl) leaderboardMetaEl.textContent = "Firebase SDK not loaded.";
+    return false;
+  }
+  if (!hasFirebaseConfig()) {
+    if (leaderboardMetaEl) leaderboardMetaEl.textContent = "Firebase not configured. Paste your config into index.html (window.FIREBASE_CONFIG).";
+    return false;
+  }
+  try {
+    if (!firebase.apps || !firebase.apps.length) {
+      firebase.initializeApp(window.FIREBASE_CONFIG);
+    }
+    _db = firebase.firestore();
+    _auth = firebase.auth();
+
+    // Optional: anonymous auth enables basic abuse controls later, without sign-up.
+    try { await _auth.signInAnonymously(); } catch {}
+
+    _fbReady = true;
+    return true;
+  } catch (err) {
+    if (leaderboardMetaEl) leaderboardMetaEl.textContent = "Firebase init failed: " + (err && err.message ? err.message : String(err));
+    return false;
+  }
+};
+
+const renderLeaderboard = (rows) => {
+  if (!leaderboardListEl) return;
+  leaderboardListEl.innerHTML = "";
+  const frag = document.createDocumentFragment();
+  rows.forEach((r, i) => {
+    const li = document.createElement("li");
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "lbName";
+    const scoreSpan = document.createElement("span");
+    scoreSpan.className = "lbScore";
+
+    const rank = i + 1;
+    const nm = safeText(r.name || "Anonymous");
+    const sc = Number.isFinite(r.score) ? r.score : 0;
+
+    nameSpan.textContent = `${rank}. ${nm}`;
+    scoreSpan.textContent = `${sc}`;
+
+    li.appendChild(nameSpan);
+    li.appendChild(scoreSpan);
+    frag.appendChild(li);
+  });
+  leaderboardListEl.appendChild(frag);
+};
+
+const refreshLeaderboard = async () => {
+  if (leaderboardMetaEl) leaderboardMetaEl.textContent = "Loading…";
+  const ok = await initFirebase();
+  if (!ok) return;
+
+  try {
+    const snap = await _db.collection(LEADERBOARD_COLLECTION)
+      .orderBy("score", "desc")
+      .orderBy("createdAt", "asc")
+      .limit(MAX_LEADERBOARD_ROWS)
+      .get();
+
+    const rows = [];
+    snap.forEach((doc) => rows.push(doc.data() || {}));
+    renderLeaderboard(rows);
+
+    if (leaderboardMetaEl) leaderboardMetaEl.textContent = `Top ${Math.min(rows.length, MAX_LEADERBOARD_ROWS)} (global)`;
+  } catch (err) {
+    if (leaderboardMetaEl) leaderboardMetaEl.textContent = "Failed to load leaderboard: " + (err && err.message ? err.message : String(err));
+  }
+};
+
+const submitScore = async ({ score, kps }) => {
+  const ok = await initFirebase();
+  if (!ok) return;
+
+  // Basic sanity limits (not anti-cheat, just avoids obvious junk)
+  const s = Math.max(0, Math.min(100000, Math.floor(score || 0)));
+  if (s <= 0) return;
+
+  const name = getPlayerName() || "Anonymous";
+  const uid = (_auth && _auth.currentUser && _auth.currentUser.uid) ? _auth.currentUser.uid : null;
+
+  const payload = {
+    score: s,
+    kps: Number.isFinite(kps) ? Math.max(0, Math.min(100000, kps)) : 0,
+    name,
+    uid,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    version: "v1",
+    client: {
+      tzOffsetMin: new Date().getTimezoneOffset(),
+      ua: navigator.userAgent ? String(navigator.userAgent).slice(0, 180) : ""
+    }
+  };
+
+  try {
+    await _db.collection(LEADERBOARD_COLLECTION).add(payload);
+  } catch (err) {
+    // Non-fatal; game continues
+    if (leaderboardMetaEl) leaderboardMetaEl.textContent = "Score submit failed: " + (err && err.message ? err.message : String(err));
+  }
+};
+
+const shareScore = async (score) => {
+  const s = Math.max(0, Math.floor(score || 0));
+  const url = `${location.origin}${location.pathname}`;
+  const text = `I scored ${s} BoqBoqs in BoqBoq. Can you beat me?`;
+  const title = "BoqBoq Score";
+
+  try {
+    if (navigator.share) {
+      await navigator.share({ title, text, url });
+      return;
+    }
+  } catch {}
+
+  // Fallback: open a share intent (LinkedIn), and copy to clipboard as a convenience
+  const shareUrl = "https://www.linkedin.com/sharing/share-offsite/?url=" + encodeURIComponent(url);
+  window.open(shareUrl, "_blank", "noopener,noreferrer");
+  try { await navigator.clipboard.writeText(text + " " + url); } catch {}
+};
+
+
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
   const cellKey = (x, y) => `${x},${y}`;
   const isAdjacent = (dx, dy) => (dx !== 0 || dy !== 0) && Math.abs(dx) <= 1 && Math.abs(dy) <= 1;
@@ -655,7 +855,20 @@ this.dead = false;
       // Center overlay
       this.showGameOverOverlay(this.kills, kps, isNewHigh);
 
-      if (this.playerSprite && this.playerSprite.setTint) { this.playerSprite.setTint(0x3b4b5c); }
+      
+// Global leaderboard submit + refresh (best-effort; non-blocking)
+submitScore({ score: this.kills, kps })
+  .then(() => refreshLeaderboard())
+  .catch(() => {});
+
+// Enable score sharing from the Game Over overlay
+if (shareBtn) {
+  shareBtn.onclick = (e) => {
+    if (e) e.preventDefault();
+    shareScore(this.kills).catch(() => {});
+  };
+}
+if (this.playerSprite && this.playerSprite.setTint) { this.playerSprite.setTint(0x3b4b5c); }
       if (this.playerSprite && this.playerSprite.setAlpha) { this.playerSprite.setAlpha(0.85); }
     }
 
